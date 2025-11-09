@@ -46,10 +46,11 @@ def main():
     parser.add_argument("--trainer", type=str, default="sft")
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-0.5B")
     parser.add_argument("--teacher_model", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
-    parser.add_argument("--dataset", type=str, default="trl-lib/Capybara")
+    parser.add_argument("--dataset", type=str, default="nvidia/Nemotron-Post-Training-Dataset-v2")
+    parser.add_argument("--split", type=str, default="train")
     args = parser.parse_args()
 
-    dataset = load_dataset(args.dataset, split="train")
+    dataset = load_dataset(args.dataset, split=args.split)
 
     if args.trainer == "sft":
         trainer = init_sft_trainer(args.model, dataset)
