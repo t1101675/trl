@@ -6,6 +6,8 @@ from trl import (
 from datasets import load_dataset
 from argparse import ArgumentParser
 
+from transformers import AutoTokenizer
+
 
 def init_sft_trainer(model_name, dataset):
     trainer = SFTTrainer(
@@ -25,8 +27,10 @@ def init_grpo_trainer(model_name, dataset, reward_func):
 
 
 def init_gkd_trainer(model_name, teacher_model_name, dataset):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     trainer = GKDTrainer(
         model=model_name,
+        processing_class=tokenizer,
         teacher_model=teacher_model_name,
         train_dataset=dataset,
     )
