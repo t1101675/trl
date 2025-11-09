@@ -25,6 +25,7 @@ import torch.nn.functional as F
 from datasets import Dataset
 from transformers import (
     AutoModelForCausalLM,
+    AutoProcessor,
     BaseImageProcessor,
     DataCollator,
     FeatureExtractionMixin,
@@ -145,6 +146,25 @@ class GKDTrainer(SFTTrainer):
         # Respect a user-provided data_collator; otherwise, provide a ChatML collator that
         if data_collator is None:
             data_collator = DataCollatorForChatML(tokenizer=processing_class, max_length=args.max_length)
+
+        # Processing class
+        if processing_class is None:
+            processing_class = AutoProcessor.from_pretrained(get_config_model_id(model.config), truncation_side="left")
+
+        # Handle pad token for processors or tokenizers
+        if isinstance(processing_class, ProcessorMixin):
+            tokenizer = processing_class.tokenizer
+        elif isinstance(processing_class, PreTrainedTokenizerBase):
+            tokenizer = processing_class
+        else:
+            raise TypeError("The `processing_class` must be either a `PreTrainedTokenizerBase` or a `ProcessorMixin`")
+
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        self.pad_token = tokenizer.pad_token
+        self.pad_token_id = tokenizer.pad_token_id
+        self.eos_token_id = tokenizer.eos_token_id
 
         # Ensure SFTTrainer does not pre-process the dataset when using a ChatML collator,
         # so that raw conversational fields (e.g., "messages") remain available to the collator.
