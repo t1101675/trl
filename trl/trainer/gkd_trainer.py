@@ -136,7 +136,8 @@ class GKDTrainer(SFTTrainer):
                 "TRL_EXPERIMENTAL_SILENCE=1."
             )
         # Ensure Trainer does not drop non-signature columns used by the collator (e.g., "prompts")
-        args.remove_unused_columns = False
+        if args is not None:
+            args.remove_unused_columns = False
         # Respect a user-provided data_collator; otherwise, provide a ChatML collator that
         if data_collator is None:
             data_collator = DataCollatorForChatML(tokenizer=processing_class, max_length=args.max_length)
