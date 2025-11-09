@@ -41,7 +41,7 @@ from ..models import prepare_deepspeed
 from ..models.utils import unwrap_model_for_generation
 from .gkd_config import GKDConfig
 from .sft_trainer import SFTTrainer
-from .utils import DataCollatorForChatML, disable_dropout_in_model, empty_cache
+from .utils import DataCollatorForChatML, disable_dropout_in_model, empty_cache, get_config_model_id
 
 
 if is_peft_available():
@@ -139,7 +139,7 @@ class GKDTrainer(SFTTrainer):
         if args is None:
             model_name = model if isinstance(model, str) else get_config_model_id(model.config)
             model_name = model_name.split("/")[-1]
-            args = GRPOConfig(f"{model_name}-GRPO")
+            args = GKDConfig(f"{model_name}-GKD")
 
         args.remove_unused_columns = False
         # Respect a user-provided data_collator; otherwise, provide a ChatML collator that
