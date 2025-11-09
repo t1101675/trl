@@ -143,10 +143,6 @@ class GKDTrainer(SFTTrainer):
             args = GKDConfig(f"{model_name}-GKD")
 
         args.remove_unused_columns = False
-        # Respect a user-provided data_collator; otherwise, provide a ChatML collator that
-        if data_collator is None:
-            data_collator = DataCollatorForChatML(tokenizer=processing_class, max_length=args.max_length)
-
         # Processing class
         if processing_class is None:
             processing_class = AutoProcessor.from_pretrained(get_config_model_id(model.config), truncation_side="left")
@@ -165,6 +161,10 @@ class GKDTrainer(SFTTrainer):
         self.pad_token = tokenizer.pad_token
         self.pad_token_id = tokenizer.pad_token_id
         self.eos_token_id = tokenizer.eos_token_id
+
+        # Respect a user-provided data_collator; otherwise, provide a ChatML collator that
+        if data_collator is None:
+            data_collator = DataCollatorForChatML(tokenizer=processing_class, max_length=args.max_length)
 
         # Ensure SFTTrainer does not pre-process the dataset when using a ChatML collator,
         # so that raw conversational fields (e.g., "messages") remain available to the collator.
