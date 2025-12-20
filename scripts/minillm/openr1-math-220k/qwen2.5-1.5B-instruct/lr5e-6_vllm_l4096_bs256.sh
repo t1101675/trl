@@ -45,7 +45,7 @@ accelerate launch --config_file=trl/accelerate_configs/zero1.yaml --num_processe
 trl/scripts/minillm.py \
     --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \
     --dtype bfloat16 \
-    --teacher_model_name_or_path Qwen/Qwen2.5-7B-Math-Instruct \
+    --teacher_model_name_or_path Qwen/Qwen2.5-Math-7B-Instruct \
     --teacher_dtype bfloat16 \
     --dataset_name dataset/llm_rl/OpenR1-Math-220k \
     --learning_rate 5.0e-6 \
