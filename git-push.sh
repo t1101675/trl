@@ -1,12 +1,15 @@
 #!/bin/bash
-# Push to GitHub (via SSH key)
-# Usage: ./git-push.sh [branch] [commit message]
+# Push to GitHub (via HTTPS proxy)
+# Usage: ./git-push.sh [commit message] [branch]
 
-BRANCH=${1:-biatd}
-MSG=${2:-"update"}
+MSG=${1:-"update"}
+BRANCH=${2:-biatd}
 
 git add -A
 git commit -m "$MSG" || echo "Nothing to commit"
-GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git push origin "$BRANCH"
+
+/usr/bin/env \
+    http{,s}_proxy=http://172.29.4.175:22222 \
+    git push origin "$BRANCH"
 
 echo "✅ Pushed branch: $BRANCH"
