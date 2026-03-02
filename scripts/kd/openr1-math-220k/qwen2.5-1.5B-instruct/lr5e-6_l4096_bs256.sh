@@ -27,6 +27,13 @@ else
 fi
 echo "Available GPU count: $gpu_count"
 
+# ============================================================
+# Paths — local pre-downloaded models and data
+# ============================================================
+STUDENT_MODEL="pretrained_models/Qwen_Qwen2.5-1.5B-Instruct"
+TEACHER_MODEL="pretrained_models/Qwen_Qwen2.5-3B-Instruct"
+DATASET_PATH="dataset/llm_rl/OpenR1-Math-220k"
+
 GROUP_NAME=kd/openr1-math-220k/qwen2.5-1.5B-instruct/lr5e-6_l4096_bs256
 JOB_TYPE=train
 RUN_NAME=${JOB_TYPE}/${GROUP_NAME}
@@ -42,11 +49,11 @@ read -r -d '' cmd <<EOF
 accelerate launch --config_file=trl/accelerate_configs/zero1.yaml --num_processes $NUM_PROCESS \
 --num_machines $SLURM_NNODES --rdzv_backend c10d --main_process_ip $head_node_ip --main_process_port 29500 \
 trl/scripts/kd.py \
-    --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \
+    --model_name_or_path $STUDENT_MODEL \
     --dtype bfloat16 \
-    --teacher_model_name_or_path Qwen/Qwen2.5-3B-Instruct \
+    --teacher_model_name_or_path $TEACHER_MODEL \
     --teacher_dtype bfloat16 \
-    --dataset_name dataset/llm_rl/OpenR1-Math-220k \
+    --dataset_name $DATASET_PATH \
     --kd_alpha 0.5 \
     --kd_temperature 1.0 \
     --learning_rate 5.0e-6 \
