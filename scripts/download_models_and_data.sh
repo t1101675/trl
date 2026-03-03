@@ -21,7 +21,7 @@ fi
 # ============================================================
 MODELS=(
     "Qwen/Qwen2.5-1.5B-Instruct"
-    "Qwen/Qwen2.5-3B-Instruct"
+    "Qwen/Qwen2.5-7B-Instruct"
 )
 
 MODEL_DIR="pretrained_models"
