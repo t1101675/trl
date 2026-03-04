@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source haienv trl
-
 export OMP_NUM_THREADS=32
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -15,9 +13,9 @@ echo "Available GPU count: $gpu_count"
 # ============================================================
 # Paths — local pre-downloaded models and data
 # ============================================================
-STUDENT_MODEL="pretrained_models/Qwen_Qwen2.5-1.5B-Instruct"
-TEACHER_MODEL="pretrained_models/Qwen_Qwen2.5-7B-Instruct"
-DATASET_PATH="dataset/llm_rl/OpenR1-Math-220k"
+STUDENT_MODEL="pretrained_models/Qwen2.5-1.5B"
+TEACHER_MODEL="pretrained_models/Qwen2.5-7B-Instruct"
+DATASET_PATH="dataset/OpenR1-Math-220k"
 
 GROUP_NAME=kd/openr1-math-220k/qwen2.5-1.5B-instruct/lr5e-6_l4096_bs256
 JOB_TYPE=train
