@@ -27,7 +27,8 @@ import yaml
 from datasets import DatasetDict, concatenate_datasets
 from transformers import HfArgumentParser
 from transformers.hf_argparser import DataClass, DataClassType
-from transformers.utils import is_rich_available
+# from transformers.utils import is_rich_available
+is_rich_available = lambda: False
 
 
 def _ensure_transformers_parallelism_config() -> None:

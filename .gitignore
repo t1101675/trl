@@ -140,8 +140,8 @@ checklink/cookies.txt
 .gitconfig
 
 # wandb files
-nbs/wandb/
-examples/notebooks/wandb/
+nbs/
 wandb/
 results
-datasetpretrained_models/
+dataset
+pretrained_models/

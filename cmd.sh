@@ -1,0 +1,1 @@
+source haienv rl25.base.ci.harmony

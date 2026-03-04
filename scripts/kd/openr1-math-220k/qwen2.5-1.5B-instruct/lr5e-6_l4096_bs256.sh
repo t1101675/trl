@@ -1,21 +1,6 @@
 #!/bin/bash
 
-if [ -n "$SLURM_JOB_ID" ] && [ ! -t 0 ]; then
-    # on nv cluster
-    nodes=( $( scontrol show hostnames $SLURM_JOB_NODELIST ) )
-    nodes_array=($nodes)
-    head_node=${nodes_array[0]}
-    head_node_ip=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
-
-    export LOGLEVEL=INFO
-
-    export PATH="$HOME/workspace/anaconda3/envs/trl/bin:$PATH"
-    CODEDIR="$HOME/workspace/code/trl"
-    cd $CODEDIR
-else
-    SLURM_NNODES=1
-    head_node_ip=localhost
-fi
+source haienv trl
 
 export OMP_NUM_THREADS=32
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -42,15 +27,12 @@ OUTPUT_DIR=results/${RUN_NAME}
 # Tensorboard logging directory (override with TB_LOG_DIR env var)
 TB_LOG_DIR=${TB_LOG_DIR:-${OUTPUT_DIR}/tb_logs}
 
-NUM_PROCESS=$((gpu_count * SLURM_NNODES))
-
 BATCH_SIZE=256
 MICRO_BATCH_SIZE=2
-GRAD_ACC=$((BATCH_SIZE / MICRO_BATCH_SIZE / NUM_PROCESS))
+GRAD_ACC=$((BATCH_SIZE / MICRO_BATCH_SIZE / gpu_count))
 
 read -r -d '' cmd <<EOF
-accelerate launch --config_file=trl/accelerate_configs/zero1.yaml --num_processes $NUM_PROCESS \
---num_machines $SLURM_NNODES --rdzv_backend c10d --main_process_ip $head_node_ip --main_process_port 29500 \
+torchrun --nproc_per_node $gpu_count \
 trl/scripts/kd.py \
     --model_name_or_path $STUDENT_MODEL \
     --dtype bfloat16 \
@@ -77,13 +59,9 @@ trl/scripts/kd.py \
     --logging_steps 1 \
     --logging_first_step true \
     --dataset_num_proc 64 \
-    --max_seq_length 4096
+    --max_seq_length 4096 \
+    --deepspeed trl/accelerate_configs/zero1_ds.json
 EOF
 
-if [ -n "$SLURM_JOB_ID" ] && [ ! -t 0 ]; then
-    echo ${cmd}
-    srun bash -c "${cmd}"
-else
-    echo ${cmd}
-    bash -c "${cmd}"
-fi
+echo ${cmd}
+bash -c "${cmd}"

@@ -41,7 +41,6 @@ dependencies = [
     "latex2sympy2",
     "pebble",
     "word2number",
-    "time_decorator"
 ]
 dynamic = ["version"]
 
