@@ -39,6 +39,9 @@ JOB_TYPE=train
 RUN_NAME=${JOB_TYPE}/${GROUP_NAME}
 OUTPUT_DIR=results/${RUN_NAME}
 
+# Tensorboard logging directory (override with TB_LOG_DIR env var)
+TB_LOG_DIR=${TB_LOG_DIR:-${OUTPUT_DIR}/tb_logs}
+
 NUM_PROCESS=$((gpu_count * SLURM_NNODES))
 
 BATCH_SIZE=256
@@ -69,11 +72,8 @@ trl/scripts/kd.py \
     --output_dir ${OUTPUT_DIR} \
     --attn_implementation flash_attention_2 \
     --resume_from_checkpoint True \
-    --report_to none \
-    --wandb_run_name $RUN_NAME \
-    --wandb_mode online \
-    --wandb_job_type $JOB_TYPE \
-    --wandb_group $GROUP_NAME \
+    --report_to tensorboard \
+    --logging_dir ${TB_LOG_DIR} \
     --logging_steps 1 \
     --logging_first_step true \
     --dataset_num_proc 64 \
