@@ -19,9 +19,9 @@ Student learns teacher's per-token distribution via forward KL on SFT data.
 
 Example:
 ```
-accelerate launch trl/scripts/kd.py \
+torchrun --nproc_per_node 8 trl/scripts/kd.py \
     --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \
-    --teacher_model_name_or_path Qwen/Qwen2.5-3B-Instruct \
+    --teacher_model_name_or_path Qwen/Qwen2.5-7B-Instruct \
     --dataset_name dataset/llm_rl/OpenR1-Math-220k \
     --kd_alpha 0.5 \
     --kd_temperature 1.0 \
@@ -29,13 +29,13 @@ accelerate launch trl/scripts/kd.py \
     --num_train_epochs 1 \
     --per_device_train_batch_size 2 \
     --gradient_accumulation_steps 16 \
-    --output_dir results/kd/qwen2.5-1.5B-from-3B
+    --output_dir results/kd/qwen2.5-1.5B-from-7B \
+    --deepspeed configs/ds_zero1_bf16.json
 ```
 """
 
 import os
 import time
-import argparse
 from dataclasses import dataclass, field
 
 from accelerate import logging
@@ -53,7 +53,6 @@ from trl import (
     get_peft_config,
 )
 from trl.experimental.kd_trainer import KDTrainer
-from trl.wandb_utils import setup_wandb
 
 logger = logging.get_logger(__name__)
 
@@ -80,27 +79,6 @@ class SaveTimeLimitCallBack(TrainerCallback):
         if elapsed_time > self.time_limit:
             control.should_save = True
             self.start_time = current_time
-
-
-class WandbLoggingCallback(TrainerCallback):
-    def __init__(self, wandb_logger):
-        self.wandb_logger = wandb_logger
-
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        wandb_logs = {f"train/{key}": value for key, value in logs.items()}
-        if self.wandb_logger is not None:
-            self.wandb_logger.log(wandb_logs, step=state.global_step, commit=True)
-
-
-@dataclass
-class WandbArguments:
-    wandb_entity: str = "eLLM-han2024"
-    wandb_project: str = "minillm-trl"
-    wandb_run_name: str = None
-    wandb_mode: str = "disabled"
-    wandb_job_type: str = "kd"
-    wandb_group: str = None
-    time_limit: int = 110 * 60
 
 
 @dataclass
@@ -132,6 +110,10 @@ class KDArguments:
         default=1.0,
         metadata={"help": "Temperature for softening distributions in KD."},
     )
+    time_limit: int = field(
+        default=110 * 60,
+        metadata={"help": "Time limit in seconds before forcing a checkpoint save."},
+    )
 
 
 def main(
@@ -141,7 +123,6 @@ def main(
     training_args: SFTConfig,
     model_args: ModelConfig,
     dataset_args: DatasetMixtureConfig,
-    wandb_args: WandbArguments,
 ):
     start_time = time.time()
     if os.environ.get("ACCELERATE_GRADIENT_ACCUMULATION_STEPS") == "auto":
@@ -195,7 +176,7 @@ def main(
     )
 
     trainer.add_callback(SaveStep0CallBack(trainer))
-    trainer.add_callback(SaveTimeLimitCallBack(trainer, start_time, wandb_args.time_limit))
+    trainer.add_callback(SaveTimeLimitCallBack(trainer, start_time, kd_args.time_limit))
 
     try:
         resume_from_checkpoint = eval(training_args.resume_from_checkpoint)
@@ -207,32 +188,10 @@ def main(
     if resume_from_checkpoint is not None:
         trainer.accelerator.print(f"Resuming training from checkpoint: {resume_from_checkpoint}")
 
-    # Wandb setup
-    wandb_config = {
-        "entity": wandb_args.wandb_entity,
-        "project": wandb_args.wandb_project,
-        "name": wandb_args.wandb_run_name.strip("/") if wandb_args.wandb_run_name else None,
-        "mode": wandb_args.wandb_mode,
-        "job_type": wandb_args.wandb_job_type,
-        "group": wandb_args.wandb_group.strip("/") if wandb_args.wandb_group else None,
-    }
-    if trainer.accelerator.is_main_process:
-        wandb_logger = setup_wandb(
-            wandb_config,
-            wandb_dir=os.path.join(training_args.output_dir, "wandb"),
-            resume=(resume_from_checkpoint is not None),
-        )
-    else:
-        wandb_logger = None
-    trainer.add_callback(WandbLoggingCallback(wandb_logger))
-
     # Train
     trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     trainer.accelerator.print("✅ Training completed.")
-
-    if wandb_logger is not None:
-        wandb_logger.finish()
 
     # Save
     trainer.save_model(training_args.output_dir)
@@ -242,7 +201,7 @@ def main(
 def make_parser(subparsers=None):
     dataclass_types = (
         TeacherArguments, KDArguments, ScriptArguments, SFTConfig,
-        ModelConfig, DatasetMixtureConfig, WandbArguments,
+        ModelConfig, DatasetMixtureConfig,
     )
     if subparsers is not None:
         parser = subparsers.add_parser("kd", help="Run word-level KD training", dataclass_types=dataclass_types)
@@ -255,7 +214,7 @@ if __name__ == "__main__":
     parser = make_parser()
     (
         teacher_args, kd_args, script_args, training_args,
-        model_args, dataset_args, wandb_args, additional_args,
+        model_args, dataset_args, additional_args,
     ) = parser.parse_args_and_config(return_remaining_strings=True)
     print(additional_args)
-    main(teacher_args, kd_args, script_args, training_args, model_args, dataset_args, wandb_args)
+    main(teacher_args, kd_args, script_args, training_args, model_args, dataset_args)
