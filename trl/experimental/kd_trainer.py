@@ -152,6 +152,18 @@ class KDTrainer(SFTTrainer):
         student_logits = student_outputs.logits
         teacher_logits = teacher_outputs.logits
 
+        # Handle vocab size mismatch: pad the smaller logits to match
+        student_vocab = student_logits.size(-1)
+        teacher_vocab = teacher_logits.size(-1)
+        if student_vocab != teacher_vocab:
+            max_vocab = max(student_vocab, teacher_vocab)
+            if student_vocab < max_vocab:
+                pad_size = max_vocab - student_vocab
+                student_logits = F.pad(student_logits, (0, pad_size), value=float("-inf"))
+            if teacher_vocab < max_vocab:
+                pad_size = max_vocab - teacher_vocab
+                teacher_logits = F.pad(teacher_logits, (0, pad_size), value=float("-inf"))
+
         # Shift for autoregressive: predict next token
         shift_student_logits = student_logits[..., :-1, :].contiguous()
         shift_teacher_logits = teacher_logits[..., :-1, :].contiguous()
